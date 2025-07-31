@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4b6cb7">
+    <meta name="description" content="Task and purchase tracker app for mobile and desktop">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Daily Tracker</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4b6cb7;
+            --secondary-color: #182848;
+            --high-priority: linear-gradient(135deg, #ff416c, #ff4b2b);
+            --medium-priority: linear-gradient(135deg, #ffb347, #ffcc33);
+            --low-priority: linear-gradient(135deg, #00cdac, #02aab0);
+            --bg-gradient: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            margin: 20px 0;
+        }
+        
+        header {
+            background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+            position: relative;
+        }
+        
+        h1 {
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            font-size: clamp(0.9rem, 2vw, 1.1rem);
+            opacity: 0.9;
+            font-weight: 300;
+        }
+        
+        .app-controls {
+            padding: 20px;
+            background: #f8f9fa;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 15px;
+            border-bottom: 1px solid #eaeaea;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+            -webkit-appearance: none;
+        }
+        
+        input:focus {
+            box-shadow: 0 4px 15px rgba(74, 108, 183, 0.3);
+        }
+        
+        button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 14px 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            white-space: nowrap;
+        }
+        
+        button:hover {
+            background: #3a5ca0;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        }
+        
+        .priority-legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 15px;
+            background: #f0f4f8;
+            border-bottom: 1px solid #eaeaea;
+            flex-wrap: wrap;
+        }
+        
+        .priority-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .priority-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+        
+        .high-priority { background: var(--high-priority); }
+        .medium-priority { background: var(--medium-priority); }
+        .low-priority { background: var(--low-priority); }
+        
+        .tasks-container {
+            padding: 15px;
+            max-height: 60vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .task-list {
+            list-style: none;
+            min-height: 100px;
+        }
+        
+        .task-item {
+            background: white;
+            padding: 16px 18px;
+            margin-bottom: 12px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+            position: relative;
+            border-left: 6px solid;
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
+        }
+        
+        .task-item:active {
+            cursor: grabbing;
+        }
+        
+        .task-item.dragging {
+            opacity: 0.5;
+            transform: scale(1.02);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .task-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 7px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .task-item.high-priority { border-left-color: #ff416c; }
+        .task-item.medium-priority { border-left-color: #ffb347; }
+        .task-item.low-priority { border-left-color: #00cdac; }
+        
+        .task-checkbox {
+            margin-right: 15px;
+            width: 22px;
+            height: 22px;
+            cursor: pointer;
+            accent-color: var(--primary-color);
+            flex-shrink: 0;
+        }
+        
+        .task-content {
+            flex: 1;
+            font-size: clamp(1rem, 3vw, 1.1rem);
+            word-break: break-word;
+        }
+        
+        .task-item.completed .task-content {
+            text-decoration: line-through;
+            color: #888;
+        }
+        
+        .task-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        
+        .task-action-btn {
+            background: none;
+            border: none;
+            color: #777;
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 5px;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        
+        .task-action-btn:hover {
+            background: #f0f4f8;
+            color: var(--primary-color);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #777;
+        }
+        
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #d0d7e0;
+        }
+        
+        .empty-state p {
+            font-size: 1.2rem;
+            margin-top: 10px;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #eaeaea;
+            color: #555;
+            font-size: 0.9rem;
+        }
+        
+        .language-switcher {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .lang-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s ease;
+        }
+        
+        .lang-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .lang-btn.active {
+            background: white;
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+        
+        .install-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s ease;
+            display: none;
+        }
+        
+        .install-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        [dir="rtl"] .task-item {
+            border-left: none;
+            border-right: 6px solid;
+        }
+        
+        [dir="rtl"] .task-item.high-priority { border-right-color: #ff416c; }
+        [dir="rtl"] .task-item.medium-priority { border-right-color: #ffb347; }
+        [dir="rtl"] .task-item.low-priority { border-right-color: #00cdac; }
+        
+        [dir="rtl"] .task-checkbox {
+            margin-right: 0;
+            margin-left: 15px;
+        }
+        
+        [dir="rtl"] .task-item:hover {
+            transform: translateX(-5px);
+        }
+        
+        @media (max-width: 768px) {
+            .app-controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .priority-legend {
+                gap: 10px;
+            }
+            
+            .language-switcher {
+                position: static;
+                justify-content: center;
+                margin-top: 10px;
+            }
+            
+            .install-btn {
+                display: none !important;
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .container {
+                margin: 40px 0;
+            }
+            
+            .tasks-container {
+                max-height: 50vh;
+            }
+        }
+        
+        /* PWA specific styles */
+        @media (display-mode: standalone) {
+            body {
+                padding: 0;
+            }
+            
+            .container {
+                border-radius: 0;
+                min-height: 100vh;
+                margin: 0;
+            }
+            
+            .tasks-container {
+                max-height: calc(100vh - 400px);
+            }
+            
+            header {
+                padding-top: max(25px, env(safe-area-inset-top));
+                padding-left: max(30px, env(safe-area-inset-left));
+                padding-right: max(30px, env(safe-area-inset-right));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <button id="installBtn" class="install-btn">
+                <i class="fas fa-download"></i> Install
+            </button>
+            <div class="language-switcher">
+                <button class="lang-btn" data-lang="en">English</button>
+                <button class="lang-btn" data-lang="ar">العربية</button>
+                <button class="lang-btn" data-lang="de">Deutsch</button>
+            </div>
+            <h1 id="app-title">Daily Tracker</h1>
+            <div class="subtitle" id="app-subtitle">Tasks • Purchases • Priorities</div>
+        </header>
+        
+        <div class="app-controls">
+            <div class="input-group">
+                <input type="text" id="task-input" placeholder="Add a task or purchase item...">
+                <select id="priority-select">
+                    <option value="low">Low Priority</option>
+                    <option value="medium" selected>Medium Priority</option>
+                    <option value="high">High Priority</option>
+                </select>
+            </div>
+            <button id="add-task-btn">
+                <i class="fas fa-plus"></i> <span id="add-btn-text">Add Item</span>
+            </button>
+        </div>
+        
+        <div class="priority-legend">
+            <div class="priority-item">
+                <div class="priority-dot high-priority"></div>
+                <span id="high-priority-text">High Priority</span>
+            </div>
+            <div class="priority-item">
+                <div class="priority-dot medium-priority"></div>
+                <span id="medium-priority-text">Medium Priority</span>
+            </div>
+            <div class="priority-item">
+                <div class="priority-dot low-priority"></div>
+                <span id="low-priority-text">Low Priority</span>
+            </div>
+        </div>
+        
+        <div class="tasks-container">
+            <ul class="task-list" id="task-list">
+                <div class="empty-state">
+                    <i class="fas fa-clipboard-list"></i>
+                    <h3 id="empty-title">Your list is empty</h3>
+                    <p id="empty-subtitle">Add tasks or purchases to get started</p>
+                </div>
+            </ul>
+        </div>
+        
+        <div class="stats">
+            <div><span id="total-text">Total items</span>: <span id="total-count">0</span></div>
+            <div><span id="completed-text">Completed</span>: <span id="completed-count">0</span></div>
+            <div><span id="pending-text">Pending</span>: <span id="pending-count">0</span></div>
+        </div>
+    </div>
+
+    <script>
+        // Translation dictionary
+        const translations = {
+            en: {
+                appTitle: "Daily Tracker",
+                appSubtitle: "Tasks • Purchases • Priorities",
+                taskPlaceholder: "Add a task or purchase item...",
+                lowPriority: "Low Priority",
+                mediumPriority: "Medium Priority",
+                highPriority: "High Priority",
+                addItem: "Add Item",
+                highPriorityText: "High Priority",
+                mediumPriorityText: "Medium Priority",
+                lowPriorityText: "Low Priority",
+                emptyTitle: "Your list is empty",
+                emptySubtitle: "Add tasks or purchases to get started",
+                totalText: "Total items",
+                completedText: "Completed",
+                pendingText: "Pending",
+                installText: "Install App"
+            },
+            ar: {
+                appTitle: "المتابعة اليومية",
+                appSubtitle: "مهام • مشتريات • أولويات",
+                taskPlaceholder: "أضف مهمة أو عنصر شراء...",
+                lowPriority: "أولوية منخفضة",
+                mediumPriority: "أولوية متوسطة",
+                highPriority: "أولوية عالية",
+                addItem: "إضافة عنصر",
+                highPriorityText: "أولوية عالية",
+                mediumPriorityText: "أولوية متوسطة",
+                lowPriorityText: "أولوية منخفضة",
+                emptyTitle: "قائمتك فارغة",
+                emptySubtitle: "أضف مهام أو مشتريات للبدء",
+                totalText: "إجمالي العناصر",
+                completedText: "مكتمل",
+                pendingText: "معلق",
+                installText: "تثبيت التطبيق"
+            },
+            de: {
+                appTitle: "Täglicher Tracker",
+                appSubtitle: "Aufgaben • Einkäufe • Prioritäten",
+                taskPlaceholder: "Aufgabe oder Einkaufsartikel hinzufügen...",
+                lowPriority: "Niedrige Priorität",
+                mediumPriority: "Mittlere Priorität",
+                highPriority: "Hohe Priorität",
+                addItem: "Hinzufügen",
+                highPriorityText: "Hohe Priorität",
+                mediumPriorityText: "Mittlere Priorität",
+                lowPriorityText: "Niedrige Priorität",
+                emptyTitle: "Ihre Liste ist leer",
+                emptySubtitle: "Fügen Sie Aufgaben oder Einkäufe hinzu",
+                totalText: "Gesamt",
+                completedText: "Abgeschlossen",
+                pendingText: "Ausstehend",
+                installText: "App installieren"
+            }
+        };
+
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+
+        // Install Prompt
+        let deferredPrompt;
+        const installBtn = document.getElementById('installBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.style.display = 'block';
+            
+            installBtn.addEventListener('click', () => {
+                installBtn.style.display = 'none';
+                deferredPrompt.prompt();
+                
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted install prompt');
+                    } else {
+                        console.log('User dismissed install prompt');
+                    }
+                    deferredPrompt = null;
+                });
+            });
+        });
+
+        window.addEventListener('appinstalled', () => {
+            installBtn.style.display = 'none';
+            deferredPrompt = null;
+            console.log('App installed');
+        });
+
+        // Detect if running as PWA
+        function isRunningAsPWA() {
+            return window.matchMedia('(display-mode: standalone)').matches || 
+                   window.navigator.standalone ||
+                   document.referrer.includes('android-app://');
+        }
+
+        // Main App Code
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM elements
+            const taskInput = document.getElementById('task-input');
+            const prioritySelect = document.getElementById('priority-select');
+            const addTaskBtn = document.getElementById('add-task-btn');
+            const taskList = document.getElementById('task-list');
+            const totalCount = document.getElementById('total-count');
+            const completedCount = document.getElementById('completed-count');
+            const pendingCount = document.getElementById('pending-count');
+            const langButtons = document.querySelectorAll('.lang-btn');
+            
+            // Current language
+            let currentLang = localStorage.getItem('language') || 'en';
+            
+            // Initialize tasks from localStorage or sample data
+            let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+            
+            // Set initial language
+            setLanguage(currentLang);
+            
+            // Render tasks
+            function renderTasks() {
+                taskList.innerHTML = '';
+                
+                if (tasks.length === 0) {
+                    taskList.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-clipboard-list"></i>
+                            <h3 id="empty-title">${translations[currentLang].emptyTitle}</h3>
+                            <p id="empty-subtitle">${translations[currentLang].emptySubtitle}</p>
+                        </div>
+                    `;
+                    updateStats();
+                    return;
+                }
+                
+                tasks.forEach((task, index) => {
+                    const taskItem = document.createElement('li');
+                    taskItem.className = `task-item ${task.priority}-priority ${task.completed ? 'completed' : ''}`;
+                    taskItem.setAttribute('draggable', 'true');
+                    taskItem.setAttribute('data-index', index);
+                    taskItem.innerHTML = `
+                        <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} data-index="${index}">
+                        <div class="task-content">${task.text}</div>
+                        <div class="task-actions">
+                            <button class="task-action-btn edit-btn" data-index="${index}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="task-action-btn delete-btn" data-index="${index}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    taskList.appendChild(taskItem);
+                });
+                
+                updateStats();
+                initDragAndDrop();
+            }
+            
+            // Update stats
+            function updateStats() {
+                totalCount.textContent = tasks.length;
+                const completed = tasks.filter(task => task.completed).length;
+                completedCount.textContent = completed;
+                pendingCount.textContent = tasks.length - completed;
+            }
+            
+            // Add new task
+            function addTask() {
+                const text = taskInput.value.trim();
+                if (text === '') return;
+                
+                const newTask = {
+                    text,
+                    priority: prioritySelect.value,
+                    completed: false
+                };
+                
+                tasks.push(newTask);
+                saveTasks();
+                renderTasks();
+                
+                // Reset input
+                taskInput.value = '';
+                taskInput.focus();
+            }
+            
+            // Delete task
+            function deleteTask(index) {
+                tasks.splice(index, 1);
+                saveTasks();
+                renderTasks();
+            }
+            
+            // Edit task
+            function editTask(index) {
+                const newText = prompt(translations[currentLang].addItem, tasks[index].text);
+                if (newText !== null && newText.trim() !== '') {
+                    tasks[index].text = newText.trim();
+                    saveTasks();
+                    renderTasks();
+                }
+            }
+            
+            // Toggle task completion
+            function toggleTask(index) {
+                tasks[index].completed = !tasks[index].completed;
+                saveTasks();
+                renderTasks();
+            }
+            
+            // Save tasks to localStorage
+            function saveTasks() {
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+            }
+            
+            // Set language
+            function setLanguage(lang) {
+                currentLang = lang;
+                localStorage.setItem('language', lang);
+                
+                // Update UI elements
+                document.getElementById('app-title').textContent = translations[lang].appTitle;
+                document.getElementById('app-subtitle').textContent = translations[lang].appSubtitle;
+                document.getElementById('task-input').placeholder = translations[lang].taskPlaceholder;
+                document.getElementById('add-btn-text').textContent = translations[lang].addItem;
+                document.getElementById('high-priority-text').textContent = translations[lang].highPriorityText;
+                document.getElementById('medium-priority-text').textContent = translations[lang].mediumPriorityText;
+                document.getElementById('low-priority-text').textContent = translations[lang].lowPriorityText;
+                document.getElementById('empty-title').textContent = translations[lang].emptyTitle;
+                document.getElementById('empty-subtitle').textContent = translations[lang].emptySubtitle;
+                document.getElementById('total-text').textContent = translations[lang].totalText;
+                document.getElementById('completed-text').textContent = translations[lang].completedText;
+                document.getElementById('pending-text').textContent = translations[lang].pendingText;
+                document.getElementById('installBtn').innerHTML = `<i class="fas fa-download"></i> ${translations[lang].installText}`;
+                
+                // Update priority select options
+                const prioritySelect = document.getElementById('priority-select');
+                prioritySelect.innerHTML = '';
+                const priorities = [
+                    { value: 'low', text: translations[lang].lowPriority },
+                    { value: 'medium', text: translations[lang].mediumPriority },
+                    { value: 'high', text: translations[lang].highPriority }
+                ];
+                
+                priorities.forEach(priority => {
+                    const option = document.createElement('option');
+                    option.value = priority.value;
+                    option.textContent = priority.text;
+                    if (priority.value === 'medium') {
+                        option.selected = true;
+                    }
+                    prioritySelect.appendChild(option);
+                });
+                
+                // Update active language button
+                langButtons.forEach(btn => {
+                    if (btn.dataset.lang === lang) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+                
+                // Set document direction for RTL languages
+                if (lang === 'ar') {
+                    document.body.setAttribute('dir', 'rtl');
+                } else {
+                    document.body.setAttribute('dir', 'ltr');
+                }
+                
+                // Re-render tasks to update any language-specific elements
+                renderTasks();
+            }
+            
+            // Initialize drag and drop functionality
+            function initDragAndDrop() {
+                const items = document.querySelectorAll('.task-item');
+                let draggedItem = null;
+                
+                items.forEach(item => {
+                    item.addEventListener('dragstart', function() {
+                        draggedItem = item;
+                        setTimeout(() => {
+                            item.classList.add('dragging');
+                        }, 0);
+                    });
+                    
+                    item.addEventListener('dragend', function() {
+                        item.classList.remove('dragging');
+                        draggedItem = null;
+                    });
+                });
+                
+                taskList.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    const afterElement = getDragAfterElement(taskList, e.clientY);
+                    if (afterElement == null) {
+                        taskList.appendChild(draggedItem);
+                    } else {
+                        taskList.insertBefore(draggedItem, afterElement);
+                    }
+                });
+                
+                taskList.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    updateTaskOrder();
+                });
+            }
+            
+            function getDragAfterElement(container, y) {
+                const draggableElements = [...container.querySelectorAll('.task-item:not(.dragging)')];
+                
+                return draggableElements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = y - box.top - box.height / 2;
+                    
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset: offset, element: child };
+                    } else {
+                        return closest;
+                    }
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+            }
+            
+            function updateTaskOrder() {
+                const newOrder = [...taskList.children].map(item => {
+                    return tasks[item.dataset.index];
+                });
+                
+                tasks = newOrder;
+                saveTasks();
+                renderTasks();
+            }
+            
+            // Event listeners
+            addTaskBtn.addEventListener('click', addTask);
+            
+            taskInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') addTask();
+            });
+            
+            taskList.addEventListener('click', function(e) {
+                if (e.target.classList.contains('task-checkbox')) {
+                    const index = e.target.dataset.index;
+                    toggleTask(index);
+                }
+                
+                if (e.target.classList.contains('delete-btn') || e.target.closest('.delete-btn')) {
+                    const index = e.target.closest('.delete-btn').dataset.index;
+                    deleteTask(index);
+                }
+                
+                if (e.target.classList.contains('edit-btn') || e.target.closest('.edit-btn')) {
+                    const index = e.target.closest('.edit-btn').dataset.index;
+                    editTask(index);
+                }
+            });
+            
+            // Language switcher
+            langButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    setLanguage(this.dataset.lang);
+                });
+            });
+            
+            // Initial render
+            renderTasks();
+            
+            // Check if running as PWA
+            if (isRunningAsPWA()) {
+                console.log('Running as PWA');
+                document.body.classList.add('pwa-mode');
+            }
+        });
+    </script>
+</body>
+</html>
+
